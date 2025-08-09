@@ -2,8 +2,40 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 import os
 from dotenv import load_dotenv
+import openai
+
 
 load_dotenv()
+
+def analyze_match_with_ai(job_requirements, candidate_profile):
+    """Use OpenAI to analyze how well a candidate matches job requirements"""
+    try:
+        client = openai.OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+        
+        prompt = f"""
+        Analyze how well this candidate matches the job requirements:
+        
+        JOB REQUIREMENTS:
+        {job_requirements}
+        
+        CANDIDATE PROFILE:
+        {candidate_profile}
+        
+        Provide a match score (0-100) and brief explanation.
+        Respond in JSON format like: {{"score": 85, "explanation": "Strong match because..."}}
+        """
+        
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=200
+        )
+        
+        return response.choices[0].message.content
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+
 
 app = Flask(__name__)
 CORS(app)
@@ -21,17 +53,21 @@ def health_check():
         "status": "healthy", 
         "service": "ai-talent-matcher"
     })
-
 @app.route('/match', methods=['POST'])
-def simple_match():
+def ai_match():
     data = request.get_json()
-    job_title = data.get('job_title', 'No title provided')
     
-    # For now, return a simple response - we'll add OpenAI logic next
+    job_requirements = data.get('job_requirements', 'No requirements provided')
+    candidate_profile = data.get('candidate_profile', 'No profile provided')
+    
+    # Get AI analysis
+    ai_result = analyze_match_with_ai(job_requirements, candidate_profile)
+    
     return jsonify({
-        "job_title": job_title,
-        "message": "Matching endpoint is working!",
-        "status": "ready for AI integration"
+        "job_requirements": job_requirements,
+        "candidate_profile": candidate_profile,
+        "ai_analysis": ai_result,
+        "status": "success"
     })
 
 if __name__ == '__main__':
