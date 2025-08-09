@@ -71,5 +71,69 @@ def ai_match():
         "status": "success"
     })
 
+@app.route('/bulk-match', methods=['POST'])
+def bulk_match():
+    data = request.get_json()
+    
+    job_requirements = data.get('job_requirements', '')
+    candidates = data.get('candidates', [])
+    
+    if not candidates:
+        return jsonify({"error": "No candidates provided"}), 400
+    
+    results = []
+    for i, candidate in enumerate(candidates):
+        candidate_profile = candidate.get('profile', '')
+        candidate_name = candidate.get('name', f'Candidate {i+1}')
+        
+        ai_analysis = analyze_match_with_ai(job_requirements, candidate_profile)
+        
+        results.append({
+            "candidate_name": candidate_name,
+            "candidate_profile": candidate_profile,
+            "ai_analysis": ai_analysis
+        })
+    
+    return jsonify({
+        "job_requirements": job_requirements,
+        "total_candidates": len(candidates),
+        "matches": results,
+        "status": "success"
+    })
+
+@app.route('/docs')
+def api_docs():
+    docs = {
+        "API_Documentation": "AI Talent Match Engine",
+        "version": "1.0.0",
+        "base_url": "https://ai-talent-match-engine.onrender.com",
+        "endpoints": {
+            "/": "GET - API status check",
+            "/health": "GET - Health check",
+            "/match": {
+                "method": "POST",
+                "description": "Match single candidate to job requirements",
+                "body": {
+                    "job_requirements": "string - Job description and requirements",
+                    "candidate_profile": "string - Candidate skills and experience"
+                }
+            },
+            "/bulk-match": {
+                "method": "POST", 
+                "description": "Match multiple candidates to job requirements",
+                "body": {
+                    "job_requirements": "string - Job description and requirements",
+                    "candidates": [
+                        {
+                            "name": "string - Candidate name",
+                            "profile": "string - Candidate skills and experience"
+                        }
+                    ]
+                }
+            }
+        }
+    }
+    return jsonify(docs)
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
