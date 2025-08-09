@@ -1,21 +1,22 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+from flask import Flask, jsonify
+from flask_cors import CORS
 
-app = FastAPI(title="AI Talent Match Engine", version="0.1.0")
+app = Flask(__name__)
+CORS(app)
 
-# Enable CORS for frontend integration later
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+@app.route('/')
+def root():
+    return jsonify({
+        "message": "AI Talent Match Engine is running!", 
+        "status": "active"
+    })
 
-@app.get("/")
-async def root():
-    return {"message": "AI Talent Match Engine is running!", "status": "active"}
+@app.route('/health')
+def health_check():
+    return jsonify({
+        "status": "healthy", 
+        "service": "ai-talent-matcher"
+    })
 
-@app.get("/health")
-async def health_check():
-    return {"status": "healthy", "service": "ai-talent-matcher"}
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
