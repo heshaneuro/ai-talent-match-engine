@@ -7,6 +7,7 @@ import openai
 
 load_dotenv()
 
+
 def analyze_match_with_ai(job_requirements, candidate_profile):
     """Use OpenAI to analyze how well a candidate matches job requirements"""
     try:
@@ -28,13 +29,13 @@ def analyze_match_with_ai(job_requirements, candidate_profile):
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=200
+            max_tokens=200,
+            temperature=0.7
         )
         
         return response.choices[0].message.content
     except Exception as e:
         return f"Error: {str(e)}"
-
 
 
 app = Flask(__name__)
