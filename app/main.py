@@ -112,8 +112,8 @@ def bulk_match():
 def api_docs():
     docs = {
         "API_Documentation": "AI Talent Match Engine - Cybersecurity Edition",
-        "version": "1.0.0",
-        "description": "AI-powered cybersecurity talent matching for security teams and recruitment",
+        "version": "1.1.0",
+        "description": "AI-powered cybersecurity talent matching with CSV upload support",
         "base_url": "https://ai-talent-match-engine.onrender.com",
         "endpoints": {
             "/": "GET - API status check",
@@ -122,73 +122,50 @@ def api_docs():
             "/match": {
                 "method": "POST",
                 "description": "Match single candidate to security job requirements",
-                "use_case": "Quick security expert evaluation",
-                "body_example": {
-                    "job_requirements": "Looking for GRC expert with audit experience",
-                    "candidate_profile": "Senior Security Analyst with 7 years GRC experience, specializing in compliance audits"
-                }
+                "content_type": "application/json"
             },
             "/bulk-match": {
                 "method": "POST",
-                "description": "Match multiple security experts to job requirements", 
-                "use_case": "Process security talent pools",
-                "body_example": {
-                    "job_requirements": "Red Team specialist for penetration testing",
-                    "candidates": [
-                        {"name": "John Doe", "profile": "Penetration tester with 5 years experience"},
-                        {"name": "Jane Smith", "profile": "Network security analyst, 3 years experience"}
-                    ]
-                }
+                "description": "Match multiple security experts to job requirements",
+                "content_type": "application/json"
             },
-            "/upload-candidates": {
+            "/process-candidate-data": {
                 "method": "POST",
-                "description": "Process cybersecurity experts from CSV/form data",
-                "use_case": "Import from CyberTalents or similar platforms",
-                "csv_fields_supported": [
-                    "Full Name", "Job Title", "Country", "Years of Experience",
-                    "Main Category (GRC/Red Team/Blue Team/System Security)",
-                    "Specialization details", "Training experience"
-                ],
-                "body_example": {
-                    "job_requirements": "GRC consultant for compliance project",
-                    "csv_data": [
-                        {
-                            "Full Name": "Ahmed Hassan",
-                            "Job Title": "Security Consultant", 
-                            "Country": "Egypt",
-                            "Years of Experience": "5-7 Years",
-                            "Kindly select One Main Category you would like to apply for": "GRC Expert",
-                            "Kindly select the Specialization you would like to apply for in GRC category": "Audit, Implementation"
-                        }
-                    ]
-                }
+                "description": "Process cybersecurity experts from structured JSON data",
+                "content_type": "application/json",
+                "use_case": "API integration with existing systems",
+                "note": "Renamed from /upload-candidates for clarity"
+            },
+            "/upload-csv": {
+                "method": "POST",
+                "description": "Upload actual CSV file and process cybersecurity experts",
+                "content_type": "multipart/form-data",
+                "use_case": "Direct CSV file upload from CyberTalents exports",
+                "form_fields": {
+                    "file": "CSV file (required)",
+                    "job_requirements": "Job description text (optional)"
+                },
+                "supported_csv_format": "CyberTalents expert registration format"
             },
             "/match-analytics": {
-                "method": "POST", 
+                "method": "POST",
                 "description": "Cybersecurity talent pool analytics",
-                "use_case": "Security recruitment insights and market analysis",
-                "provides": [
-                    "Match score distribution",
-                    "Cybersecurity specialty breakdown (GRC/Red/Blue Team)",
-                    "Experience level analysis",
-                    "Geographic distribution",
-                    "Top candidates ranking"
-                ]
+                "content_type": "application/json"
             }
         },
-        "industry_focus": "Cybersecurity & Information Security",
-        "supported_specialties": [
-            "GRC (Governance, Risk, Compliance)",
-            "Red Team (Penetration Testing, Ethical Hacking)",
-            "Blue Team (SOC, DFIR, Threat Hunting)",
-            "System Security (Network, Cloud, Infrastructure)"
-        ]
+        "csv_upload_instructions": {
+            "step1": "Prepare CSV file with cybersecurity expert data",
+            "step2": "Use multipart/form-data with 'file' field for CSV",
+            "step3": "Optionally add 'job_requirements' form field",
+            "step4": "Receive AI-powered matching results"
+        }
     }
     return jsonify(docs)
 
-@app.route('/upload-candidates', methods=['POST'])
-def upload_candidates():
-    """Process cybersecurity expert data from CSV format"""
+@app.route('/process-candidate-data', methods=['POST'])
+def process_candidate_data():
+    """Process cybersecurity expert data from JSON format (formerly upload-candidates)"""
+    # Keep all the existing code exactly the same, just rename the function
     try:
         data = request.get_json()
         
@@ -263,8 +240,6 @@ def upload_candidates():
         
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-
 
 
 @app.route('/match-analytics', methods=['POST'])
@@ -389,6 +364,114 @@ def cybersecurity_analytics():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+
+import io
+import csv
+
+@app.route('/upload-csv', methods=['POST'])
+def upload_csv_file():
+    """Upload actual CSV file and process cybersecurity expert data"""
+    try:
+        # Check if file is in request
+        if 'file' not in request.files:
+            return jsonify({"error": "No file uploaded"}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({"error": "No file selected"}), 400
+        
+        # Get job requirements from form data
+        job_requirements = request.form.get('job_requirements', 'General cybersecurity position')
+        
+        # Read and parse CSV file
+        if file and file.filename.endswith('.csv'):
+            # Read file content
+            stream = io.StringIO(file.stream.read().decode("UTF8"), newline=None)
+            csv_reader = csv.DictReader(stream)
+            
+            # Convert CSV rows to list of dictionaries
+            csv_data = []
+            for row in csv_reader:
+                # Clean up the row data
+                clean_row = {}
+                for key, value in row.items():
+                    if key and value:  # Skip empty keys/values
+                        clean_row[key.strip()] = str(value).strip()
+                if clean_row:  # Only add non-empty rows
+                    csv_data.append(clean_row)
+            
+            if not csv_data:
+                return jsonify({"error": "No valid data found in CSV file"}), 400
+            
+            # Process using the same logic as process-candidate-data
+            results = []
+            for candidate_row in csv_data:
+                # Build comprehensive cybersecurity profile (same logic as before)
+                profile_parts = []
+                
+                # Basic info
+                name = candidate_row.get('Full Name', '').strip()
+                job_title = candidate_row.get('Job Title', '').strip()
+                country = candidate_row.get('Country', '').strip()
+                experience = candidate_row.get('Years of Experience', '').strip()
+                
+                if job_title:
+                    profile_parts.append(f"{job_title}")
+                if country:
+                    profile_parts.append(f"from {country}")
+                if experience:
+                    profile_parts.append(f"with {experience} experience")
+                
+                # Main cybersecurity category
+                main_category = candidate_row.get('Kindly select One Main Category you would like to apply for', '').strip()
+                if main_category:
+                    profile_parts.append(f"specializes in {main_category}")
+                
+                # Specific specializations
+                grc_spec = candidate_row.get('Kindly select the Specialization you would like to apply for in GRC category', '').strip()
+                redteam_spec = candidate_row.get('Kindly select the Specialization you would like to apply for in Red Team category', '').strip()
+                blueteam_spec = candidate_row.get('Kindly select the Specialization you would like to apply for in Blue Team category', '').strip()
+                syssec_spec = candidate_row.get('Kindly select the Specialization you would like to apply for in (System Security) category', '').strip()
+                
+                if grc_spec:
+                    profile_parts.append(f"GRC expertise: {grc_spec}")
+                if redteam_spec:
+                    profile_parts.append(f"Red Team skills: {redteam_spec}")
+                if blueteam_spec:
+                    profile_parts.append(f"Blue Team skills: {blueteam_spec}")
+                if syssec_spec:
+                    profile_parts.append(f"System Security: {syssec_spec}")
+                
+                # Training experience
+                training_exp = candidate_row.get('How many years of experience do you have in delivering cybersecurity training', '').strip()
+                if training_exp and training_exp != '':
+                    profile_parts.append(f"Training experience: {training_exp}")
+                
+                # Combine into full profile
+                candidate_profile = ". ".join(profile_parts) if profile_parts else "Limited profile information available"
+                
+                # Get AI analysis
+                ai_analysis = analyze_match_with_ai(job_requirements, candidate_profile)
+                
+                results.append({
+                    "candidate_name": name or "Unknown",
+                    "candidate_profile": candidate_profile,
+                    "ai_analysis": ai_analysis
+                })
+            
+            return jsonify({
+                "job_requirements": job_requirements,
+                "filename": file.filename,
+                "total_candidates": len(csv_data),
+                "matches": results,
+                "status": "success"
+            })
+        
+        else:
+            return jsonify({"error": "Please upload a CSV file"}), 400
+            
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
