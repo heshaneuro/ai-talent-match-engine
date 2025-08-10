@@ -115,29 +115,58 @@ def api_docs():
         "version": "1.1.0",
         "description": "AI-powered cybersecurity talent matching with CSV upload support",
         "base_url": "https://ai-talent-match-engine.onrender.com",
+        
         "endpoints": {
-            "/": "GET - API status check",
-            "/health": "GET - Health check",
-            "/docs": "GET - This documentation",
-            "/match": {
-                "method": "POST",
+            "GET /": {
+                "description": "API status check",
+                "response": "Service status message"
+            },
+            
+            "GET /health": {
+                "description": "System health check",
+                "response": "Health status confirmation"
+            },
+            
+            "POST /match": {
                 "description": "Match single candidate to security job requirements",
-                "content_type": "application/json"
+                "content_type": "application/json",
+                "example_request": {
+                    "job_requirements": "GRC expert with audit experience",
+                    "candidate_profile": "Senior Security Analyst with 7 years GRC experience"
+                },
+                "example_response": {
+                    "ai_analysis": "Score and explanation",
+                    "status": "success"
+                }
             },
-            "/bulk-match": {
-                "method": "POST",
+            
+            "POST /bulk-match": {
                 "description": "Match multiple security experts to job requirements",
-                "content_type": "application/json"
+                "content_type": "application/json",
+                "example_request": {
+                    "job_requirements": "Red Team specialist for penetration testing",
+                    "candidates": [
+                        {"name": "John Doe", "profile": "Penetration tester with 5 years experience"}
+                    ]
+                }
             },
-            "/process-candidate-data": {
-                "method": "POST",
+            
+            "POST /process-candidate-data": {
                 "description": "Process cybersecurity experts from structured JSON data",
                 "content_type": "application/json",
                 "use_case": "API integration with existing systems",
-                "note": "Renamed from /upload-candidates for clarity"
+                "note": "Renamed from /upload-candidates for clarity",
+                "csv_fields_supported": [
+                    "Full Name",
+                    "Job Title", 
+                    "Country",
+                    "Years of Experience",
+                    "Main Category (GRC/Red Team/Blue Team/System Security)",
+                    "Specialization details"
+                ]
             },
-            "/upload-csv": {
-                "method": "POST",
+            
+            "POST /upload-csv": {
                 "description": "Upload actual CSV file and process cybersecurity experts",
                 "content_type": "multipart/form-data",
                 "use_case": "Direct CSV file upload from CyberTalents exports",
@@ -145,22 +174,50 @@ def api_docs():
                     "file": "CSV file (required)",
                     "job_requirements": "Job description text (optional)"
                 },
-                "supported_csv_format": "CyberTalents expert registration format"
+                "supported_format": "CyberTalents expert registration format"
             },
-            "/match-analytics": {
-                "method": "POST",
-                "description": "Cybersecurity talent pool analytics",
-                "content_type": "application/json"
+            
+            "POST /match-analytics": {
+                "description": "Cybersecurity talent pool analytics and insights",
+                "content_type": "application/json",
+                "provides": [
+                    "Match score distribution",
+                    "Cybersecurity specialty breakdown",
+                    "Experience level analysis", 
+                    "Geographic distribution",
+                    "Top candidates ranking"
+                ]
             }
         },
-        "csv_upload_instructions": {
-            "step1": "Prepare CSV file with cybersecurity expert data",
-            "step2": "Use multipart/form-data with 'file' field for CSV",
-            "step3": "Optionally add 'job_requirements' form field",
-            "step4": "Receive AI-powered matching results"
-        }
+        
+        "how_to_upload_csv": {
+            "step_1": "Prepare CSV file with cybersecurity expert data",
+            "step_2": "Use POST to /upload-csv with multipart/form-data",
+            "step_3": "Include 'file' field with your CSV",
+            "step_4": "Optionally add 'job_requirements' text field",
+            "step_5": "Receive AI-powered matching results instantly"
+        },
+        
+        "supported_specialties": [
+            "GRC (Governance, Risk, Compliance)",
+            "Red Team (Penetration Testing, Ethical Hacking)",
+            "Blue Team (SOC, DFIR, Threat Hunting)",
+            "System Security (Network, Cloud, Infrastructure)"
+        ],
+        
+        "contact": "API ready for integration - built for cybersecurity recruitment"
     }
-    return jsonify(docs)
+    
+    # Use Flask's jsonify with proper formatting
+    from flask import Response
+    import json
+    
+    # Return properly formatted JSON
+    return Response(
+        json.dumps(docs, indent=2, ensure_ascii=False),
+        mimetype='application/json',
+        headers={'Content-Type': 'application/json; charset=utf-8'}
+    )
 
 @app.route('/process-candidate-data', methods=['POST'])
 def process_candidate_data():
