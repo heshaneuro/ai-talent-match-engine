@@ -4,9 +4,15 @@ import os
 from dotenv import load_dotenv
 import openai
 
+import json as json_module
+import re
+
 
 load_dotenv()
 
+
+app = Flask(__name__)
+CORS(app)
 
 def analyze_match_with_ai(job_requirements, candidate_profile):
     """Use OpenAI to analyze how well a candidate matches job requirements"""
@@ -38,8 +44,6 @@ def analyze_match_with_ai(job_requirements, candidate_profile):
         return f"Error: {str(e)}"
 
 
-app = Flask(__name__)
-CORS(app)
 
 @app.route('/')
 def root():
@@ -54,6 +58,8 @@ def health_check():
         "status": "healthy", 
         "service": "ai-talent-matcher"
     })
+
+
 @app.route('/match', methods=['POST'])
 def ai_match():
     data = request.get_json()
@@ -70,6 +76,7 @@ def ai_match():
         "ai_analysis": ai_result,
         "status": "success"
     })
+
 
 @app.route('/bulk-match', methods=['POST'])
 def bulk_match():
@@ -104,36 +111,284 @@ def bulk_match():
 @app.route('/docs')
 def api_docs():
     docs = {
-        "API_Documentation": "AI Talent Match Engine",
+        "API_Documentation": "AI Talent Match Engine - Cybersecurity Edition",
         "version": "1.0.0",
+        "description": "AI-powered cybersecurity talent matching for security teams and recruitment",
         "base_url": "https://ai-talent-match-engine.onrender.com",
         "endpoints": {
             "/": "GET - API status check",
             "/health": "GET - Health check",
+            "/docs": "GET - This documentation",
             "/match": {
                 "method": "POST",
-                "description": "Match single candidate to job requirements",
-                "body": {
-                    "job_requirements": "string - Job description and requirements",
-                    "candidate_profile": "string - Candidate skills and experience"
+                "description": "Match single candidate to security job requirements",
+                "use_case": "Quick security expert evaluation",
+                "body_example": {
+                    "job_requirements": "Looking for GRC expert with audit experience",
+                    "candidate_profile": "Senior Security Analyst with 7 years GRC experience, specializing in compliance audits"
                 }
             },
             "/bulk-match": {
-                "method": "POST", 
-                "description": "Match multiple candidates to job requirements",
-                "body": {
-                    "job_requirements": "string - Job description and requirements",
+                "method": "POST",
+                "description": "Match multiple security experts to job requirements", 
+                "use_case": "Process security talent pools",
+                "body_example": {
+                    "job_requirements": "Red Team specialist for penetration testing",
                     "candidates": [
+                        {"name": "John Doe", "profile": "Penetration tester with 5 years experience"},
+                        {"name": "Jane Smith", "profile": "Network security analyst, 3 years experience"}
+                    ]
+                }
+            },
+            "/upload-candidates": {
+                "method": "POST",
+                "description": "Process cybersecurity experts from CSV/form data",
+                "use_case": "Import from CyberTalents or similar platforms",
+                "csv_fields_supported": [
+                    "Full Name", "Job Title", "Country", "Years of Experience",
+                    "Main Category (GRC/Red Team/Blue Team/System Security)",
+                    "Specialization details", "Training experience"
+                ],
+                "body_example": {
+                    "job_requirements": "GRC consultant for compliance project",
+                    "csv_data": [
                         {
-                            "name": "string - Candidate name",
-                            "profile": "string - Candidate skills and experience"
+                            "Full Name": "Ahmed Hassan",
+                            "Job Title": "Security Consultant", 
+                            "Country": "Egypt",
+                            "Years of Experience": "5-7 Years",
+                            "Kindly select One Main Category you would like to apply for": "GRC Expert",
+                            "Kindly select the Specialization you would like to apply for in GRC category": "Audit, Implementation"
                         }
                     ]
                 }
+            },
+            "/match-analytics": {
+                "method": "POST", 
+                "description": "Cybersecurity talent pool analytics",
+                "use_case": "Security recruitment insights and market analysis",
+                "provides": [
+                    "Match score distribution",
+                    "Cybersecurity specialty breakdown (GRC/Red/Blue Team)",
+                    "Experience level analysis",
+                    "Geographic distribution",
+                    "Top candidates ranking"
+                ]
             }
-        }
+        },
+        "industry_focus": "Cybersecurity & Information Security",
+        "supported_specialties": [
+            "GRC (Governance, Risk, Compliance)",
+            "Red Team (Penetration Testing, Ethical Hacking)",
+            "Blue Team (SOC, DFIR, Threat Hunting)",
+            "System Security (Network, Cloud, Infrastructure)"
+        ]
     }
     return jsonify(docs)
+
+@app.route('/upload-candidates', methods=['POST'])
+def upload_candidates():
+    """Process cybersecurity expert data from CSV format"""
+    try:
+        data = request.get_json()
+        
+        job_requirements = data.get('job_requirements', '')
+        csv_data = data.get('csv_data', [])
+        
+        if not csv_data:
+            return jsonify({"error": "No candidate data provided"}), 400
+        
+        results = []
+        for candidate_row in csv_data:
+            # Build comprehensive cybersecurity profile
+            profile_parts = []
+            
+            # Basic info
+            name = candidate_row.get('Full Name', '').strip()
+            job_title = candidate_row.get('Job Title', '').strip()
+            country = candidate_row.get('Country', '').strip()
+            experience = candidate_row.get('Years of Experience', '').strip()
+            
+            if job_title:
+                profile_parts.append(f"{job_title}")
+            if country:
+                profile_parts.append(f"from {country}")
+            if experience:
+                profile_parts.append(f"with {experience} experience")
+            
+            # Main cybersecurity category
+            main_category = candidate_row.get('Kindly select One Main Category you would like to apply for', '').strip()
+            if main_category:
+                profile_parts.append(f"specializes in {main_category}")
+            
+            # Specific specializations
+            grc_spec = candidate_row.get('Kindly select the Specialization you would like to apply for in GRC category', '').strip()
+            redteam_spec = candidate_row.get('Kindly select the Specialization you would like to apply for in Red Team category', '').strip()
+            blueteam_spec = candidate_row.get('Kindly select the Specialization you would like to apply for in Blue Team category', '').strip()
+            syssec_spec = candidate_row.get('Kindly select the Specialization you would like to apply for in (System Security) category', '').strip()
+            
+            if grc_spec:
+                profile_parts.append(f"GRC expertise: {grc_spec}")
+            if redteam_spec:
+                profile_parts.append(f"Red Team skills: {redteam_spec}")
+            if blueteam_spec:
+                profile_parts.append(f"Blue Team skills: {blueteam_spec}")
+            if syssec_spec:
+                profile_parts.append(f"System Security: {syssec_spec}")
+            
+            # Training experience
+            training_exp = candidate_row.get('How many years of experience do you have in delivering cybersecurity training', '').strip()
+            if training_exp and training_exp != '':
+                profile_parts.append(f"Training experience: {training_exp}")
+            
+            # Combine into full profile
+            candidate_profile = ". ".join(profile_parts) if profile_parts else "Limited profile information available"
+            
+            # Get AI analysis
+            ai_analysis = analyze_match_with_ai(job_requirements, candidate_profile)
+            
+            results.append({
+                "candidate_name": name or "Unknown",
+                "candidate_profile": candidate_profile,
+                "raw_data": candidate_row,
+                "ai_analysis": ai_analysis
+            })
+        
+        return jsonify({
+            "job_requirements": job_requirements,
+            "total_candidates": len(csv_data),
+            "matches": results,
+            "status": "success"
+        })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+
+
+@app.route('/match-analytics', methods=['POST'])
+def cybersecurity_analytics():
+    """Analyze cybersecurity talent pool with industry-specific insights"""
+    try:
+        data = request.get_json()
+        
+        job_requirements = data.get('job_requirements', '')
+        csv_data = data.get('csv_data', [])
+        
+        if not csv_data:
+            return jsonify({"error": "No candidate data provided"}), 400
+        
+        # Process all candidates and extract scores
+        scores = []
+        matches = []
+        categories = {'GRC': 0, 'Red Team': 0, 'Blue Team': 0, 'System Security': 0, 'Other': 0}
+        experience_levels = {'Junior (0-2 years)': 0, 'Mid (3-5 years)': 0, 'Senior (5+ years)': 0}
+        countries = {}
+        
+        for candidate_row in csv_data:
+            # Build profile (same logic as upload endpoint)
+            profile_parts = []
+            name = candidate_row.get('Full Name', '').strip()
+            job_title = candidate_row.get('Job Title', '').strip()
+            country = candidate_row.get('Country', '').strip()
+            experience = candidate_row.get('Years of Experience', '').strip()
+            main_category = candidate_row.get('Kindly select One Main Category you would like to apply for', '').strip()
+            
+            # Build profile
+            if job_title:
+                profile_parts.append(f"{job_title}")
+            if country:
+                profile_parts.append(f"from {country}")
+            if experience:
+                profile_parts.append(f"with {experience} experience")
+            if main_category:
+                profile_parts.append(f"specializes in {main_category}")
+            
+            candidate_profile = ". ".join(profile_parts) if profile_parts else "Limited information"
+            
+            # Get AI analysis and extract score
+            ai_analysis = analyze_match_with_ai(job_requirements, candidate_profile)
+            try:
+                clean_response = ai_analysis.replace('```json\n', '').replace('\n```', '').strip()
+                analysis_data = json_module.loads(clean_response)
+                score = analysis_data.get('score', 0)
+                scores.append(score)
+            except:
+                scores.append(0)
+            
+            matches.append({
+                "candidate_name": name or "Unknown",
+                "score": scores[-1] if scores else 0,
+                "ai_analysis": ai_analysis
+            })
+            
+            # Analytics data collection
+            # Category distribution
+            if 'GRC' in main_category:
+                categories['GRC'] += 1
+            elif 'Red Team' in main_category:
+                categories['Red Team'] += 1
+            elif 'Blue Team' in main_category:
+                categories['Blue Team'] += 1
+            elif 'System Security' in main_category:
+                categories['System Security'] += 1
+            else:
+                categories['Other'] += 1
+            
+            # Experience level
+            if any(x in experience.lower() for x in ['0-2', '1-2', '0-3']):
+                experience_levels['Junior (0-2 years)'] += 1
+            elif any(x in experience.lower() for x in ['3-5', '3-7', '4-6']):
+                experience_levels['Mid (3-5 years)'] += 1
+            else:
+                experience_levels['Senior (5+ years)'] += 1
+            
+            # Country distribution
+            if country:
+                countries[country] = countries.get(country, 0) + 1
+        
+        # Calculate score analytics
+        if scores:
+            avg_score = sum(scores) / len(scores)
+            max_score = max(scores)
+            min_score = min(scores)
+            
+            excellent = len([s for s in scores if s >= 80])
+            good = len([s for s in scores if 60 <= s < 80])
+            fair = len([s for s in scores if 40 <= s < 60])
+            poor = len([s for s in scores if s < 40])
+        else:
+            avg_score = max_score = min_score = 0
+            excellent = good = fair = poor = 0
+        
+        # Sort matches by score
+        top_matches = sorted(matches, key=lambda x: x['score'], reverse=True)[:5]
+        
+        return jsonify({
+            "job_requirements": job_requirements,
+            "analytics": {
+                "total_candidates": len(csv_data),
+                "average_match_score": round(avg_score, 1),
+                "highest_score": max_score,
+                "lowest_score": min_score,
+                "score_distribution": {
+                    "excellent_80_plus": excellent,
+                    "good_60_79": good,
+                    "fair_40_59": fair,
+                    "poor_below_40": poor
+                },
+                "cybersecurity_specialties": categories,
+                "experience_distribution": experience_levels,
+                "geographic_distribution": countries
+            },
+            "top_5_matches": top_matches,
+            "status": "success"
+        })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
