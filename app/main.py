@@ -12,7 +12,7 @@ load_dotenv()
 
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, origins="*", allow_headers="*", methods="*", supports_credentials=True)
 
 def analyze_match_with_ai(job_requirements, candidate_profile):
     """Use OpenAI to analyze how well a candidate matches job requirements"""
