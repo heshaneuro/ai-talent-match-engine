@@ -444,7 +444,7 @@ def upload_csv_file():
         if file and file.filename.endswith('.csv'):
             # Read file content
             stream = io.StringIO(file.stream.read().decode("UTF8"), newline=None)
-            csv_reader = csv.DictReader(stream)
+            csv_reader = csv.DictReader(stream, delimiter=',')
             
             # Convert CSV rows to list of dictionaries
             csv_data = []
