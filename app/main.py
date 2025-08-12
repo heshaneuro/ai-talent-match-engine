@@ -449,6 +449,10 @@ def upload_csv_file():
             # Convert CSV rows to list of dictionaries
             csv_data = []
             for row in csv_reader:
+                # DEBUG: Print column names and first row
+                if not csv_data:  # Only print once for the first row
+                    print("DEBUG - Column names found:", list(row.keys()))
+                    print("DEBUG - First row data:", dict(row))
                 # Clean up the row data
                 clean_row = {}
                 for key, value in row.items():
