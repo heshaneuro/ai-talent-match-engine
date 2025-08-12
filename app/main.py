@@ -448,11 +448,20 @@ def upload_csv_file():
             
             # Convert CSV rows to list of dictionaries
             csv_data = []
+            debug_printed = False
             for row in csv_reader:
-                # DEBUG: Print column names and first row
-                if not csv_data:  # Only print once for the first row
-                    print("DEBUG - Column names found:", list(row.keys()))
-                    print("DEBUG - First row data:", dict(row))
+                # DEBUG: Print column names and first row (only once)
+                if not debug_printed:
+                    print("=" * 50)
+                    print("DEBUG - CSV PARSING INFO")
+                    print("=" * 50)
+                    print("Column names found:", list(row.keys()))
+                    print("Number of columns:", len(row.keys()))
+                    print("First row raw data:")
+                    for key, value in row.items():
+                        print(f"  '{key}' = '{value}'")
+                    print("=" * 50)
+                    debug_printed = True
                 # Clean up the row data
                 clean_row = {}
                 for key, value in row.items():
