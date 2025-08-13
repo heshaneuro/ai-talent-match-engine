@@ -7,6 +7,10 @@ import openai
 import json as json_module
 import re
 
+import tempfile
+import os
+from pathlib import Path
+
 
 load_dotenv()
 
@@ -542,6 +546,43 @@ def upload_csv_file():
             
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+
+@app.route('/extract-cv-experience', methods=['POST'])
+def extract_cv_experience():
+    """Extract cybersecurity experience from uploaded CV PDF"""
+    try:
+        # Check if file is in request
+        if 'file' not in request.files:
+            return jsonify({"error": "No CV file uploaded"}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({"error": "No file selected"}), 400
+        
+        # Validate file type
+        if not file.filename.lower().endswith('.pdf'):
+            return jsonify({"error": "Please upload a PDF file"}), 400
+        
+        # Check file size (5MB limit)
+        file.seek(0, os.SEEK_END)
+        file_size = file.tell()
+        file.seek(0)  # Reset file pointer
+        
+        if file_size > 5 * 1024 * 1024:  # 5MB in bytes
+            return jsonify({"error": "File size too large. Maximum 5MB allowed."}), 400
+        
+        # TODO: Process PDF file (Phase 2)
+        # For now, return basic info
+        return jsonify({
+            "filename": file.filename,
+            "file_size_mb": round(file_size / (1024 * 1024), 2),
+            "status": "received",
+            "message": "PDF received successfully. Processing functionality coming in Phase 2."
+        })
+        
+    except Exception as e:
+        return jsonify({"error": f"Failed to process CV: {str(e)}"}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
