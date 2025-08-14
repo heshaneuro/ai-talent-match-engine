@@ -144,6 +144,74 @@ def analyze_match_with_ai(job_requirements, candidate_profile):
 
 
 
+def extract_experience_from_html(html_content, api_key):
+    """First step: Extract professional experience section from HTML"""
+    try:
+        client = openai.OpenAI(api_key=api_key)
+        
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": """You are a professional CV analyzer. 
+                Your task is to extract ONLY the professional experience section from the HTML content.
+                - Focus exclusively on work experience, job roles, and professional achievements
+                - Ignore all other sections (education, skills, personal info, etc.)
+                - Maintain the chronological order of experiences
+                - Include company names, job titles, dates, and job descriptions
+                - Return the information in a clean, structured text format
+                - If no experience section is found, respond with 'No professional experience section found in the document'"""
+                },
+                {"role": "user", "content": f"Extract the professional experience information from this HTML: {html_content}"}
+            ],
+            temperature=0.0,
+            max_tokens=2000,
+            presence_penalty=0,
+            frequency_penalty=0
+        )
+        
+        return response.choices[0].message.content
+        
+    except Exception as e:
+        return f"Error extracting experience: {str(e)}"
+
+def calculate_cybersecurity_experience(experience_text, api_key):
+    """Second step: Calculate cybersecurity experience from extracted text"""
+    try:
+        client = openai.OpenAI(api_key=api_key)
+        
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": """You are an expert at analyzing cyber security work experience.
+                Your task is to:
+                1. Identify all cyber security related roles and their durations
+                2. Handle overlapping time periods to avoid double-counting
+                3. Only count roles that are primarily focused on cyber security
+                4. Calculate the total net experience in years and months
+                5. Return ONLY the final calculation in this exact format: 'Total Cyber Security Experience: X years and Y months'
+                
+                Rules for calculation:
+                - Don't count parallel experiences twice
+                - Round down to the nearest month
+                - Only include roles where cyber security was the primary focus
+                - Exclude general IT roles unless they were specifically security-focused
+                - If no cyber security experience is found, return 'No relevant cyber security experience found'"""
+                },
+                {"role": "user", "content": f"Calculate the total cyber security experience from this work history: {experience_text}"}
+            ],
+            temperature=0.0,
+            max_tokens=1500,
+            presence_penalty=0,
+            frequency_penalty=0
+        )
+        
+        return response.choices[0].message.content
+        
+    except Exception as e:
+        return f"Error calculating experience: {str(e)}"
+
+
+
 @app.route('/')
 def root():
     return jsonify({
@@ -684,14 +752,28 @@ def extract_cv_experience():
             if not html_content or len(html_content.strip()) < 200:
                 return jsonify({"error": "PDF appears to contain insufficient content for analysis."}), 400
             
-            # TODO: Add OpenAI experience extraction from HTML (Phase 3)
+           # Step 1: Extract professional experience from HTML
+            api_key = os.getenv('OPENAI_API_KEY')
+            experience_text = extract_experience_from_html(html_content, api_key)
+            
+            if "No professional experience section found" in experience_text:
+                return jsonify({
+                    "filename": file.filename,
+                    "file_size_mb": round(file_size / (1024 * 1024), 2),
+                    "experience_text": experience_text,
+                    "calculation": "No experience section found to analyze",
+                    "status": "no_experience_found"
+                })
+            
+            # Step 2: Calculate cybersecurity experience
+            experience_calculation = calculate_cybersecurity_experience(experience_text, api_key)
+            
             return jsonify({
                 "filename": file.filename,
                 "file_size_mb": round(file_size / (1024 * 1024), 2),
-                "html_preview": html_content[:500] + "..." if len(html_content) > 500 else html_content,
-                "html_length": len(html_content),
-                "status": "html_generated",
-                "message": "PDF converted to HTML successfully. OpenAI analysis coming in Phase 3."
+                "experience_text": experience_text,
+                "calculation": experience_calculation,
+                "status": "success"
             })
             
         finally:
