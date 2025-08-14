@@ -10,6 +10,7 @@ import re
 import tempfile
 import os
 from pathlib import Path
+import pdfplumber
 
 
 load_dotenv()
@@ -50,6 +51,65 @@ def convert_structured_data_to_html(structured_data):
 
     html_content.append("</body></html>")
     return "\n".join(html_content)
+
+
+
+def extract_pdf_to_structured_data(pdf_path):
+    """Extract structured data from PDF using pdfplumber"""
+    try:
+        with pdfplumber.open(pdf_path) as pdf:
+            all_page_data = []
+            
+            for page_num, page in enumerate(pdf.pages, 1):
+                # Extract words with better grouping
+                words = page.extract_words(
+                    x_tolerance=3,
+                    y_tolerance=3,
+                    keep_blank_chars=True,
+                    use_text_flow=True
+                )
+
+                # Group words by vertical position (approximate lines)
+                current_line = []
+                current_y = None
+                y_tolerance = 3
+                sections = []
+
+                for word in words:
+                    if current_y is None:
+                        current_y = word['top']
+                        current_line.append(word)
+                    elif abs(word['top'] - current_y) <= y_tolerance:
+                        current_line.append(word)
+                    else:
+                        # New line detected
+                        if current_line:
+                            sections.append({
+                                'text': ' '.join(w['text'] for w in current_line),
+                                'font_size': current_line[0].get('size', 12),
+                                'y_position': current_y
+                            })
+                        current_line = [word]
+                        current_y = word['top']
+
+                # Don't forget the last line
+                if current_line:
+                    sections.append({
+                        'text': ' '.join(w['text'] for w in current_line),
+                        'font_size': current_line[0].get('size', 12),
+                        'y_position': current_y
+                    })
+
+                # Sort sections by vertical position
+                sections.sort(key=lambda x: x['y_position'])
+                all_page_data.extend(sections)
+
+        return all_page_data
+        
+    except Exception as e:
+        print(f"Error processing PDF with pdfplumber: {e}")
+        return None
+
 
 
 
