@@ -1,5 +1,5 @@
 from flask import Flask, jsonify, request
-from flask_cors import CORS
+from flask_cors import CORS, cross_origin
 import os
 from dotenv import load_dotenv
 import openai
@@ -17,7 +17,17 @@ load_dotenv()
 
 
 app = Flask(__name__)
-CORS(app, origins="*", allow_headers="*", methods="*", supports_credentials=True)
+
+
+
+app = Flask(__name__)
+CORS(app, resources={
+    r"/*": {
+        "origins": "*",
+        "methods": ["GET", "POST", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"]
+    }
+})
 
 
 
