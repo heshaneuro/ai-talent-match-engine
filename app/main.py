@@ -760,7 +760,6 @@ def extract_cv_experience():
                 return jsonify({
                     "filename": file.filename,
                     "file_size_mb": round(file_size / (1024 * 1024), 2),
-                    "html_content": html_content,  # Add this line
                     "calculation": "No experience section found to analyze",
                     "status": "no_experience_found"
                 })
@@ -771,7 +770,6 @@ def extract_cv_experience():
             return jsonify({
                 "filename": file.filename,
                 "file_size_mb": round(file_size / (1024 * 1024), 2),
-                "html_content": html_content,  # Add this line
                 "calculation": experience_calculation,
                 "status": "success"
             })
