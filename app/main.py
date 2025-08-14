@@ -18,6 +18,41 @@ load_dotenv()
 app = Flask(__name__)
 CORS(app, origins="*", allow_headers="*", methods="*", supports_credentials=True)
 
+
+
+def convert_structured_data_to_html(structured_data):
+    """Convert structured PDF data to HTML format like your visualization script"""
+    html_content = [
+        "<!DOCTYPE html>",
+        "<html><head>",
+        "<style>",
+        "body { font-family: Arial, sans-serif; margin: 2rem; }",
+        ".section { margin: 0.5rem 0; }",
+        ".large-text { font-size: 1.1em; font-weight: bold; }",
+        ".medium-text { font-size: 1em; }",
+        ".small-text { font-size: 0.9em; }",
+        "</style>",
+        "</head><body>"
+    ]
+
+    for section in structured_data:
+        if section['text'].strip():  # Only add non-empty sections
+            # Determine text size class based on font size
+            size_class = 'medium-text'
+            if section['font_size'] > 15:
+                size_class = 'large-text'
+            elif section['font_size'] < 10:
+                size_class = 'small-text'
+
+            html_content.append(
+                f'<div class="section {size_class}">{section["text"]}</div>'
+            )
+
+    html_content.append("</body></html>")
+    return "\n".join(html_content)
+
+
+
 def analyze_match_with_ai(job_requirements, candidate_profile):
     """Use OpenAI to analyze how well a candidate matches job requirements"""
     try:
@@ -547,7 +582,6 @@ def upload_csv_file():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     
-
 @app.route('/extract-cv-experience', methods=['POST'])
 def extract_cv_experience():
     """Extract cybersecurity experience from uploaded CV PDF"""
@@ -572,15 +606,47 @@ def extract_cv_experience():
         if file_size > 5 * 1024 * 1024:  # 5MB in bytes
             return jsonify({"error": "File size too large. Maximum 5MB allowed."}), 400
         
-        # TODO: Process PDF file (Phase 2)
-        # For now, return basic info
-        return jsonify({
-            "filename": file.filename,
-            "file_size_mb": round(file_size / (1024 * 1024), 2),
-            "status": "received",
-            "message": "PDF received successfully. Processing functionality coming in Phase 2."
-        })
+        # Create temporary file for processing
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as temp_file:
+            file.save(temp_file.name)
+            temp_pdf_path = temp_file.name
         
+        try:
+            # Extract structured data from PDF
+            structured_data = extract_pdf_to_structured_data(temp_pdf_path)
+            
+            if not structured_data:
+                return jsonify({"error": "Failed to extract content from PDF. Please ensure it's a valid PDF with text content."}), 400
+            
+            # Convert to HTML format (matching your original workflow)
+            html_content = convert_structured_data_to_html(structured_data)
+            
+            if not html_content or len(html_content.strip()) < 200:
+                return jsonify({"error": "PDF appears to contain insufficient content for analysis."}), 400
+            
+            # TODO: Add OpenAI experience extraction from HTML (Phase 3)
+            return jsonify({
+                "filename": file.filename,
+                "file_size_mb": round(file_size / (1024 * 1024), 2),
+                "html_preview": html_content[:500] + "..." if len(html_content) > 500 else html_content,
+                "html_length": len(html_content),
+                "status": "html_generated",
+                "message": "PDF converted to HTML successfully. OpenAI analysis coming in Phase 3."
+            })
+            
+        finally:
+            # Clean up temporary file after short delay (keep for debugging as requested)
+            import threading
+            def cleanup_file():
+                import time
+                time.sleep(300)  # Keep file for 5 minutes
+                try:
+                    os.unlink(temp_pdf_path)
+                except:
+                    pass
+            
+            threading.Thread(target=cleanup_file, daemon=True).start()
+            
     except Exception as e:
         return jsonify({"error": f"Failed to process CV: {str(e)}"}), 500
 
